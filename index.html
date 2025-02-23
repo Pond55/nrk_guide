@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>NRK Program Guide</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background-color: #f9f9f9;
+    }
+    h1 {
+      text-align: center;
+    }
+    #date-picker-container {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .channel-section {
+      margin-top: 30px;
+      border-bottom: 1px solid #ccc;
+      padding-bottom: 15px;
+    }
+    .channel-section h3 {
+      margin: 10px 0 5px;
+    }
+    .channel-logo {
+      max-width: 200px;
+      display: block;
+      margin: 10px 0;
+    }
+    .program-line {
+      margin: 8px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>NRK Program Guide</h1>
+  <div id="date-picker-container">
+    <label for="date-picker">Select Date: </label>
+    <input type="date" id="date-picker" value="2025-02-24">
+    <button id="load-guide">Load Guide</button>
+  </div>
+  <div id="program-guide">
+    <!-- The program guide will be rendered here -->
+  </div>
+
+  <script>
+    // Helper: extract planned time from a field that may be an object or a string
+    function extractPlannedTime(timeField) {
+      if (typeof timeField === 'object' && timeField !== null) {
+        return timeField.planned || timeField.actual || "";
+      } else if (typeof timeField === 'string') {
+        return timeField;
+      }
+      return "";
+    }
+
+    // Helper: format an ISO8601 time into "HH:MM"
+    function formatTime(isoTime) {
+      try {
+        let dt = new Date(isoTime);
+        let hours = dt.getHours().toString().padStart(2, '0');
+        let minutes = dt.getMinutes().toString().padStart(2, '0');
+        return `${hours}:${minutes}`;
+      } catch (e) {
+        return isoTime;
+      }
+    }
+
+    // Generate the guide HTML from the JSON data and chosen date
+    function generateGuideHTML(data, dateStr) {
+      let html = `<h2>Program Guide – ${dateStr}</h2>`;
+      data.forEach(channel => {
+        let channelTitle = channel.title || "";
+        if (!channelTitle) return;
+
+        let validProgramLines = [];
+        let largestLogoURL = null;
+        if (channel.channelImages && channel.channelImages.length > 0) {
+          // Pick the image with the largest width
+          channel.channelImages.sort((a, b) => b.width - a.width);
+          largestLogoURL = channel.channelImages[0].url;
+        }
+
+        // Process each program entry
+        (channel.transmissionGroups || []).forEach(group => {
+          (group.entries || []).forEach(entry => {
+            let rawTime = entry.startTime || entry.start || "";
+            let plannedIsoTime = extractPlannedTime(rawTime);
+            let timeStr = formatTime(plannedIsoTime);
+
+            let title = (entry.title || "").trim();
+            let description = (entry.description || "").trim();
+
+            // Skip entries if time is missing or equals "00:35", title is empty or "No Program Title", or description is empty
+            if (!timeStr || timeStr === "00:35") return;
+            if (!title || title === "No Program Title") return;
+            if (!description) return;
+
+            validProgramLines.push(`${timeStr} ${title} ${description}`);
+          });
+        });
+
+        // Only add the channel if there are valid programs
+        if (validProgramLines.length > 0) {
+          html += `<div class="channel-section">`;
+          html += `<h3>${channelTitle}</h3>`;
+          if (largestLogoURL) {
+            html += `<img src="${largestLogoURL}" alt="${channelTitle}" class="channel-logo">`;
+          }
+          validProgramLines.forEach(line => {
+            html += `<div class="program-line">${line}</div>`;
+          });
+          html += `</div>`;
+        }
+      });
+      return html;
+    }
+
+    // Fetch the program guide JSON using a CORS proxy and render it
+    function loadGuide() {
+      let datePicker = document.getElementById('date-picker');
+      let dateStr = datePicker.value;
+      // Build the API URL with the selected date
+      let baseUrl = `https://psapi.nrk.no/tv/epg/nrk1_rogaland,nrk2,nrk3,nrksuper,nrk_tegnspraak?date=${dateStr}`;
+      // Using a CORS proxy (for testing only). You may need to request temporary access from cors-anywhere.
+      let apiUrl = `https://cors-anywhere.herokuapp.com/${baseUrl}`;
+
+      fetch(apiUrl)
+        .then(response => response.json())
+        .then(data => {
+          let guideHTML = generateGuideHTML(data, dateStr);
+          document.getElementById('program-guide').innerHTML = guideHTML;
+        })
+        .catch(error => {
+          console.error("Error fetching guide:", error);
+          document.getElementById('program-guide').innerHTML = `<p>Error loading program guide: ${error}</p>`;
+        });
+    }
+
+    document.getElementById('load-guide').addEventListener('click', loadGuide);
+    // Optionally, uncomment the next line to load the guide automatically on page load.
+    // loadGuide();
+  </script>
+</body>
+</html>
