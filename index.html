@@ -93,7 +93,8 @@
             let title = (entry.title || "").trim();
             let description = (entry.description || "").trim();
 
-            // Skip entries if time is missing or equals "00:35", title is empty or "No Program Title", or description is empty
+            // Skip entries if time is missing or equals "00:35",
+            // title is empty or "No Program Title", or description is empty
             if (!timeStr || timeStr === "00:35") return;
             if (!title || title === "No Program Title") return;
             if (!description) return;
@@ -118,19 +119,21 @@
       return html;
     }
 
-    // Fetch the program guide JSON using the Thingproxy CORS proxy
+    // Fetch the program guide JSON using the All Origins proxy and render it
     function loadGuide() {
       let datePicker = document.getElementById('date-picker');
       let dateStr = datePicker.value;
       // Build the API URL with the selected date
       let baseUrl = `https://psapi.nrk.no/tv/epg/nrk1_rogaland,nrk2,nrk3,nrksuper,nrk_tegnspraak?date=${dateStr}`;
-      // Using Thingproxy from Freeboard as an alternative CORS proxy
-      let apiUrl = `https://thingproxy.freeboard.io/fetch/${baseUrl}`;
+      // Using All Origins proxy
+      let apiUrl = `https://api.allorigins.hexocode.repl.co/get?disableCache=true&url=${encodeURIComponent(baseUrl)}`;
 
       fetch(apiUrl)
         .then(response => response.json())
         .then(data => {
-          let guideHTML = generateGuideHTML(data, dateStr);
+          // All Origins returns an object with "contents" holding the actual response as a string.
+          let parsedData = JSON.parse(data.contents);
+          let guideHTML = generateGuideHTML(parsedData, dateStr);
           document.getElementById('program-guide').innerHTML = guideHTML;
         })
         .catch(error => {
