@@ -46,7 +46,7 @@
   </div>
 
   <script>
-    // Helper: extract planned time from a field that may be an object or a string.
+    // Helper: extract planned time from a field that may be an object or a string
     function extractPlannedTime(timeField) {
       if (typeof timeField === 'object' && timeField !== null) {
         return timeField.planned || timeField.actual || "";
@@ -68,7 +68,7 @@
       }
     }
 
-    // Generate the guide HTML from the JSON data and chosen date.
+    // Generate the guide HTML from the JSON data and chosen date
     function generateGuideHTML(data, dateStr) {
       let html = `<h2>Program Guide – ${dateStr}</h2>`;
       data.forEach(channel => {
@@ -78,12 +78,12 @@
         let validProgramLines = [];
         let largestLogoURL = null;
         if (channel.channelImages && channel.channelImages.length > 0) {
-          // Pick the image with the largest width.
+          // Pick the image with the largest width
           channel.channelImages.sort((a, b) => b.width - a.width);
           largestLogoURL = channel.channelImages[0].url;
         }
 
-        // Process each program entry.
+        // Process each program entry
         (channel.transmissionGroups || []).forEach(group => {
           (group.entries || []).forEach(entry => {
             let rawTime = entry.startTime || entry.start || "";
@@ -93,8 +93,7 @@
             let title = (entry.title || "").trim();
             let description = (entry.description || "").trim();
 
-            // Skip entries if time is missing or equals "00:35",
-            // or if title is empty/"No Program Title", or description is empty.
+            // Skip entries if time is missing or equals "00:35", title is empty or "No Program Title", or description is empty
             if (!timeStr || timeStr === "00:35") return;
             if (!title || title === "No Program Title") return;
             if (!description) return;
@@ -103,7 +102,7 @@
           });
         });
 
-        // Only add the channel if there are valid programs.
+        // Only add the channel if there are valid programs
         if (validProgramLines.length > 0) {
           html += `<div class="channel-section">`;
           html += `<h3>${channelTitle}</h3>`;
@@ -119,21 +118,19 @@
       return html;
     }
 
-    // Fetch the program guide JSON using the All Origins proxy and render it.
+    // Fetch the program guide JSON using a CORS proxy and render it
     function loadGuide() {
       let datePicker = document.getElementById('date-picker');
       let dateStr = datePicker.value;
-      // Build the API URL with the selected date.
+      // Build the API URL with the selected date
       let baseUrl = `https://psapi.nrk.no/tv/epg/nrk1_rogaland,nrk2,nrk3,nrksuper,nrk_tegnspraak?date=${dateStr}`;
-      // Use All Origins proxy.
-      let apiUrl = `https://api.allorigins.hexocode.repl.co/get?disableCache=true&url=${encodeURIComponent(baseUrl)}`;
+      // Using a CORS proxy (for testing only). You may need to request temporary access from cors-anywhere.
+      let apiUrl = `https://cors-anywhere.herokuapp.com/${baseUrl}`;
 
       fetch(apiUrl)
         .then(response => response.json())
         .then(data => {
-          // All Origins returns an object with "contents" holding the actual response as a string.
-          let parsedData = JSON.parse(data.contents);
-          let guideHTML = generateGuideHTML(parsedData, dateStr);
+          let guideHTML = generateGuideHTML(data, dateStr);
           document.getElementById('program-guide').innerHTML = guideHTML;
         })
         .catch(error => {
